@@ -272,7 +272,8 @@ p {
   margin: 0 auto 20px auto;
 }
 
-.step-card h4 {
+/* CAMBIO: h4 ahora es h3 para mantener el estilo visual */
+.step-card h3 {
   font-size: 1.2rem;
   margin-bottom: 10px;
   color: var(--color-primary-dark);
@@ -391,7 +392,8 @@ footer {
   gap: 40px;
 }
 
-.footer-col h4 {
+/* CAMBIO: h4 ahora es h3 para mantener el estilo visual */
+.footer-col h3 {
   color: var(--color-text-light);
   margin-bottom: 20px;
   font-weight: 600;

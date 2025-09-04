@@ -1,4 +1,4 @@
-name: Deploy Simple Static Site (Direct Copy)
+name: Deploy Static Site (Final Version)
 
 on:
   push:
@@ -9,29 +9,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Descargar el código de tu repositorio
+      # 1. Descargar el código de tu repositorio en el entorno de GitHub
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. (Depuración) Listar los archivos que se van a copiar
-      - name: 🧪 List repository files
-        run: |
-          echo "Files in the repository to be deployed:"
-          ls -laR
-
-      # 3. Desplegar los archivos al servidor
+      # 2. Desplegar al servidor usando los parámetros 'source' y 'target'
+      #    Esta es la forma correcta de transferir archivos
       - name: 🚀 Deploy files to server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Sincroniza el contenido del directorio actual (./) con el directorio remoto
-            # --exclude '.git*' es VITAL para no copiar todo el historial de git
-            # --exclude '.github' es para no copiar los workflows
-            rsync -avz --delete --exclude '.git*' --exclude '.github' ./ ${{ secrets.REMOTE_PATH }}
-
-            echo "--- Deployment finished ---"
-            echo "Final check: Listing contents of remote directory:"
-            ls -laR ${{ secrets.REMOTE_PATH }}
+          source: "./" # Directorio de origen (todo el repositorio) en el runner de GitHub
+          target: ${{ secrets.REMOTE_PATH }} # Directorio de destino en tu servidor
+          rm: true # Opción para borrar archivos en el destino que no están en el origen

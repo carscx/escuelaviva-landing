@@ -1,59 +1,47 @@
-# Nombre del workflow, aparecerá en la pestaña "Actions" de GitHub
 name: Deploy Landing Page to CloudPanel
 
-# Disparador: Este workflow se ejecutará en cada 'push' a la rama 'main'
 on:
   push:
     branches:
       - main
 
-# Trabajos a ejecutar: solo tenemos uno, llamado 'build-and-deploy'
 jobs:
   build-and-deploy:
-    # Usamos la última versión de Ubuntu para ejecutar el trabajo
     runs-on: ubuntu-latest
 
-    # Pasos que se ejecutarán secuencialmente
     steps:
       # 1. Clonar el repositorio
-      # Descarga tu código en el entorno de ejecución de GitHub Actions
       - name: Checkout repository
         uses: actions/checkout@v3
 
       # 2. Instalar Node.js
-      # Lo necesitamos para usar las herramientas de minificación
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18" # Puedes usar 18 o una versión más reciente
+          node-version: "18"
 
       # 3. Instalar herramientas de minificación
-      # Se instalan dos paquetes: uno para HTML y otro para CSS
       - name: Install minification tools
-        run: npm install html-minifier -g && npm install clean-css-cli -g
+        run: npm install html-minifier-terser -g && npm install clean-css-cli -g
 
-      # 4. Minificar HTML y CSS
-      # - Crea un directorio 'dist' para los archivos optimizados
-      # - Busca todos los .html, los minifica y los guarda en 'dist'
-      # - Busca todos los .css, los minifica y los guarda en 'dist'
-      # - Copia otros archivos (imágenes, js, etc.) a 'dist'
-      - name: Minify HTML & CSS
+      # 4. Construir y Minificar (Versión Mejorada)
+      #    - Copia todo el proyecto a 'dist'
+      #    - Luego minifica los archivos HTML y CSS directamente dentro de 'dist'
+      - name: Build and Minify
         run: |
-          mkdir dist
-          find . -type f -name "*.html" -exec html-minifier {} --collapse-whitespace --remove-comments --remove-optional-tags --remove-redundant-attributes --remove-script-type-attributes --remove-tag-whitespace --use-short-doctype --minify-css true --minify-js true -o dist/{} \;
-          find . -type f -name "*.css" -exec cleancss {} -o dist/{} \;
-          rsync -av --exclude='*.html' --exclude='*.css' --exclude='.git*' --exclude='dist' ./* ./dist/
+          mkdir -p dist/
+          rsync -av . ./dist/ --exclude ".git" --exclude ".github" --exclude "dist"
+          find ./dist -type f -name "*.html" -exec html-minifier-terser {} --collapse-whitespace --remove-comments -o {} \;
+          find ./dist -type f -name "*.css" -exec cleancss {} -o {} \;
 
-      # 5. Desplegar los archivos al servidor
-      # Usa la acción SSH de 'appleboy' para conectarse y subir los archivos
+      # 5. Desplegar los archivos al servidor (Versión Mejorada)
+      #    Usa los parámetros 'source' y 'target' de la acción, que son más seguros
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SSH_HOST }} # IP del servidor (desde los secrets)
-          username: ${{ secrets.SSH_USER }} # Usuario SSH (desde los secrets)
-          key: ${{ secrets.SSH_PRIVATE_KEY }} # Clave SSH privada (desde los secrets)
-          port: 22 # Puerto SSH, 22 es el estándar
-          script: |
-            # Sube el contenido de la carpeta 'dist' al directorio remoto
-            # La opción --delete elimina archivos en el destino que ya no existen en el origen
-            rsync -av --delete ./dist/ ${{ secrets.REMOTE_PATH }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "dist/" # Directorio de origen
+          target: ${{ secrets.REMOTE_PATH }} # Directorio de destino

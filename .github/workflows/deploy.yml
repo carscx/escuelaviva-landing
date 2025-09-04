@@ -58,11 +58,14 @@ jobs:
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       # 6. Desplegar ÚNICAMENTE la carpeta 'dist'
-      - name: 🚀 Deploy 'dist' folder via TAR over SSH
+      # 6. Desplegar y Corregir Permisos
+      - name: 🚀 Deploy Files & Fix Permissions
         run: |
           echo "Deploying 'dist' folder to server..."
-          # Entramos en la carpeta 'dist' y desde ahí comprimimos y enviamos su contenido
           cd dist && tar -cz . | ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_PATH }} && tar -xz"
+
+          echo "Fixing permissions on server..."
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "find ${{ secrets.REMOTE_PATH }} -type d -exec chmod 755 {} \; && find ${{ secrets.REMOTE_PATH }} -type f -exec chmod 644 {} \;"
 
       # 7. Verificación final en el servidor
       - name: ✅ Verify Final Deployment

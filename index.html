@@ -4,376 +4,146 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Escuelaviva | App de Gestión para Alumnos y Docentes del CENS 52</title>
+  <title>Próximamente | Escuelaviva CENS 52</title>
   <meta name="description"
-    content="Descubrí Escuelaviva, la nueva app del CENS 52. Gestioná horarios, notas y comunicados de forma fácil y rápida. ¡Sumate a la comunidad digital!">
-
-  <link rel="canonical" href="https://www.escuelaviva.ar/">
-  <meta name="robots" content="index, follow">
-
+    content="Estamos preparando algo grande para la comunidad del CENS 52. La nueva app Escuelaviva llegará pronto para revolucionar nuestra forma de conectar y aprender.">
+  <meta name="robots" content="noindex, follow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://www.escuelaviva.ar">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="/images/favicons/favicon.svg" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png" />
+  <link rel="manifest" href="/images/favicons/site.webmanifest" />
 
   <style>
-    /* Estilos críticos para el header y la sección hero */
+    :root {
+      --color-primary-dark: #2f4f6f;
+      --color-secondary-teal: #36a7a0;
+      --color-background: #ffffff;
+      --color-text-dark: #212529;
+      --color-text-light: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      line-height: 1.7;
+      color: var(--color-text-dark);
+      background-color: var(--color-background);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1140px;
+      margin: 0 auto;
+    }
+
     .main-header {
-      position: sticky;
-      top: 0;
       width: 100%;
       background-color: rgba(255, 255, 255, .95);
-      backdrop-filter: blur(10px);
-      z-index: 1000;
       padding: 15px 0;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, .05)
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
     }
 
     .main-header .container {
       display: flex;
       justify-content: space-between;
-      align-items: center
+      align-items: center;
     }
 
     .header-logo img {
-      height: 50px
+      height: 45px;
+      width: auto;
     }
 
-    .hero {
-      padding: 60px 0
-    }
-
-    .hero .container {
+    main {
+      flex-grow: 1;
       display: flex;
       align-items: center;
-      gap: 40px
-    }
-
-    .hero-content {
-      flex: 1
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
     }
 
     h1 {
-      font-size: 3rem;
-      margin-bottom: 20px;
-      color: #2F4F6F;
+      font-size: 3.5rem;
+      color: var(--color-primary-dark);
       font-weight: 700;
-      line-height: 1.2
+      line-height: 1.2;
+      margin-bottom: 25px;
     }
 
-    .subtitle {
+    .inspirational-quote {
       font-size: 1.25rem;
-      color: #444;
-      margin-bottom: 30px
+      color: #555;
+      max-width: 650px;
+      margin: 0 auto;
     }
 
-    .btn {
-      display: inline-block;
-      background: linear-gradient(45deg, #36A7A0, #2da09a);
-      color: #fff;
-      padding: 15px 35px;
-      text-decoration: none;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 1.1rem
+    footer {
+      background-color: #1c2733;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 40px 0;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      margin-bottom: 20px;
+      height: 60px;
+      width: auto;
+    }
+
+    footer p {
+      color: #dcdcdc;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2.5rem;
+      }
+
+      .inspirational-quote {
+        font-size: 1.1rem;
+      }
     }
   </style>
-
-  <link rel="icon" type="image/png" href="/images/favicons/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="/images/favicons/favicon.svg" />
-  <link rel="shortcut icon" href="/images/favicons/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png" />
-  <meta name="apple-mobile-web-app-title" content="EscuelaViva" />
-  <link rel="manifest" href="/images/favicons/site.webmanifest" />
-
-  <meta property="og:title" content="Escuelaviva | La App del CENS 52">
-  <meta property="og:description" content="Gestioná horarios, notas y comunicados de forma fácil y rápida.">
-  <meta property="og:image" content="https://www.escuelaviva.ar/images/og-image.jpg">
-  <meta property="og:url" content="https://www.escuelaviva.ar/">
-  <meta property="og:type" content="website">
-  <meta property="og:locale" content="es_AR">
-
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Escuelaviva | La App del CENS 52">
-  <meta name="twitter:description" content="Gestioná horarios, notas y comunicados de forma fácil y rápida.">
-  <meta name="twitter:image" content="https://www.escuelaviva.ar/images/og-image.jpg">
-
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Escuelaviva",
-    "url": "https://www.escuelaviva.ar/"
-  }
-  </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [{
-      "@type": "Question",
-      "name": "¿Cómo entro? ¿Qué hago si colgué con la contraseña?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "¡Tranqui! Para entrar, usá el mail y la contraseña que te dieron en secretaría. Si te la olvidaste, hay un botón de 'Olvidé mi contraseña' en la pantalla de acceso para que la recuperes al toque."
-      }
-    }, {
-      "@type": "Question",
-      "name": "¿Me la tengo que bajar de alguna tienda de apps?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "No hace falta. Escuelaviva es una aplicación web, anda en cualquier navegador (Chrome, Safari, etc.) de tu celu o compu. Para tenerla más a mano, podés agregarla a tu pantalla de inicio desde las opciones del navegador. ¡Es casi lo mismo que una app nativa!"
-      }
-    }, {
-      "@type": "Question",
-      "name": "Che, ¿y esto tiene algún costo?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "¡Para nada! Escuelaviva es una herramienta que te da el CENS 52 sin costo alguno. Es parte de la movida para modernizar la escuela y hacernos la vida más fácil a todos."
-      }
-    }]
-  }
-  </script>
 </head>
 <body>
-
   <header class="main-header">
     <div class="container">
       <a href="/" class="header-logo">
-        <img src="images/logo-horizontal.webp" alt="Logo de Escuelaviva CENS 52" width="188" height="75" loading="lazy"
-          decoding="async">
+        <img src="images/logo-horizontal.webp" alt="Logo de Escuelaviva CENS 52" width="125" height="50">
       </a>
-      <a href="http://www.escuelaviva.ar" target="_blank" rel="noopener noreferrer" class="btn">Acceder</a>
     </div>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="container">
-        <div class="hero-content">
-          <h1>El CENS 52 se pone la 10: tu escuela, ahora en el celu.</h1>
-          <p class="subtitle">Te presentamos Escuelaviva, la nueva app para que te olvides del bardo y tengas toda la
-            data de la cursada en un solo lugar.</p>
-          <a href="http://www.escuelaviva.ar" target="_blank" rel="noopener noreferrer" class="btn">¡Vamos para
-            adentro!</a>
-        </div>
-        <div class="hero-visual">
-          <div class="device-mockup">
-            <img src="images/hero.webp"
-              alt="Interfaz de la aplicación Escuelaviva en una tablet mostrando el calendario" fetchpriority="high"
-              width="800" height="600">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="benefits">
-      <div class="container">
-        <h2>Pensada para todos los que hacemos el CENS</h2>
-        <div class="benefits-grid">
-          <div class="benefit-card">
-            <div class="icon">🎓</div>
-            <h3>Para Alumnos</h3>
-            <ul>
-              <li><strong>Tus horarios, a mano:</strong> Chequeá tus horarios de clase actualizados al toque, desde
-                donde estés.</li>
-              <li><strong>Notificaciones al instante:</strong> Enterate si falta un profe o si hay algún anuncio
-                importante. ¡Cero sorpresas!</li>
-              <li><strong>Tus notas, sin vueltas:</strong> Mirá cómo venís con las materias y el presentismo de una
-                forma re fácil.</li>
-              <li><strong>Chat directo:</strong> Hablale a los profes y directivos sin intermediarios y sacate las dudas
-                al toque.</li>
-            </ul>
-          </div>
-          <div class="benefit-card">
-            <div class="icon">👩‍🏫</div>
-            <h3>Para Docentes</h3>
-            <ul>
-              <li><strong>Gestioná todo más fácil:</strong> Tomá lista desde el celu y agendá qué diste en cada clase
-                sin complicarla.</li>
-              <li><strong>La data de tus alumnos:</strong> Tené a mano un resumen del rendimiento y la asistencia de
-                cada pibe o piba.</li>
-              <li><strong>Notas en un clic:</strong> Cargá y actualizá las notas de tus materias al toque. ¡Basta de
-                planillas!</li>
-              <li><strong>Comunicación directa:</strong> Mandá mensajes y notificaciones a tus cursos de una, sin dar
-                mil vueltas.</li>
-            </ul>
-          </div>
-          <div class="benefit-card">
-            <div class="icon">💼</div>
-            <h3>Para Directivos</h3>
-            <ul>
-              <li><strong>La posta, al instante:</strong> Mirá estadísticas de asistencia y rendimiento para tenerla
-                siempre clara.</li>
-              <li><strong>Una gestión más piola:</strong> Manejá la info de profes y alumnos desde un solo lugar. Más
-                orden, menos lío.</li>
-              <li><strong>Avisos para todos:</strong> Mandá comunicados importantes a toda la comunidad con un solo
-                clic.</li>
-              <li><strong>Feedback que suma:</strong> Recibí la opinión de todos para que el CENS esté cada día mejor.
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="features">
-      <div class="container">
-        <h2>Una app, mil soluciones</h2>
-        <div class="feature-item">
-          <div class="feature-text">
-            <span class="tag">Todo en un solo lugar</span>
-            <h3>Acá no tenés que dar mil vueltas</h3>
-            <p>Olvidate de buscar por todos lados. Escuelaviva junta horarios, notas, faltas y comunicados. Toda la data
-              confiable y en un único lugar. La posta.</p>
-          </div>
-          <div class="feature-image">
-            <img src="images/dashboard.webp" alt="Dashboard principal de Escuelaviva con estadísticas de asistencia"
-              width="500" height="350" loading="lazy" decoding="async">
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-text">
-            <span class="tag">Comunicación al toque</span>
-            <h3>Conectados en serio, al instante</h3>
-            <p>Con la app, podés mandar notificaciones que llegan al momento. Si cambia un aula o hay un anuncio
-              importante, se enteran todos al toque. Así de fácil.</p>
-          </div>
-          <div class="feature-image">
-            <img src="images/notificaciones.webp" alt="Sistema de notificaciones de Escuelaviva en un celular"
-              width="500" height="350" loading="lazy" decoding="async">
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="how-to-start">
-      <div class="container">
-        <h2>Arrancar es una pavada</h2>
-        <div class="steps">
-          <div class="step-card">
-            <div class="step-number">1</div>
-            <h3>Entrá a la web</h3>
-            <p>Metete en <strong>www.escuelaviva.ar</strong> desde la compu o el celu.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">2</div>
-            <h3>Iniciá Sesión</h3>
-            <p>Usá el mail y la contraseña que te dieron en la secretaría del CENS.</p>
-          </div>
-          <div class="step-card">
-            <div class="step-number">3</div>
-            <h3>¡Listo! A chusmear</h3>
-            <p>Navegá por tu perfil y descubrí todas las herramientas que la app tiene para vos.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="faq" id="faq">
-      <div class="container">
-        <h2>Preguntas Frecuentes</h2>
-        <p class="faq-intro">Acá te tiramos la posta sobre las dudas más comunes. Si no encontrás lo que buscás,
-          ¡chiflanos!</p>
-        <div class="accordion">
-          <h3 class="faq-category">Para Alumnos</h3>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Cómo entro? ¿Qué hago si colgué con la contraseña?</button>
-            <div class="accordion-answer">
-              <p>¡Tranqui! Para entrar, usá el mail y la contraseña que te dieron en secretaría. Si te la olvidaste, hay
-                un botón de "Olvidé mi contraseña" en la pantalla de acceso para que la recuperes al toque.</p>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Me la tengo que bajar de alguna tienda de apps?</button>
-            <div class="accordion-answer">
-              <p>No hace falta. Escuelaviva es una aplicación web, anda en cualquier navegador (Chrome, Safari, etc.) de
-                tu celu o compu. Para tenerla más a mano, podés agregarla a tu pantalla de inicio desde las opciones del
-                navegador. ¡Es casi lo mismo que una app nativa!</p>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Quién puede chusmear mi info y mis notas?</button>
-            <div class="accordion-answer">
-              <p>Solamente vos, tus profes de las materias que cursás y los directivos. Tu data está segura y no es
-                pública. ¡Cuidamos tu privacidad a full!</p>
-            </div>
-          </div>
-          <h3 class="faq-category">Para Docentes</h3>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Puedo cargar notas si me equivoco?</button>
-            <div class="accordion-answer">
-              <p>¡Obvio! Si le pifiaste a una nota, podés editarla o borrarla sin problemas mientras el período de carga
-                esté abierto. Es mucho más flexible que el papel.</p>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Cómo mando un mensaje a todo mi curso de una?</button>
-            <div class="accordion-answer">
-              <p>Dentro de la sección de tus cursos, vas a encontrar una opción de "Comunicados" o "Mensajería". Desde
-                ahí, podés escribir un solo mensaje y mandárselo a todos los alumnos inscriptos al toque.</p>
-            </div>
-          </div>
-          <h3 class="faq-category">Generales</h3>
-          <div class="accordion-item">
-            <button class="accordion-question">Che, ¿y esto tiene algún costo?</button>
-            <div class="accordion-answer">
-              <p>¡Para nada! Escuelaviva es una herramienta que te da el CENS 52 sin costo alguno. Es parte de la movida
-                para modernizar la escuela y hacernos la vida más fácil a todos.</p>
-            </div>
-          </div>
-          <div class="accordion-item">
-            <button class="accordion-question">¿Qué onda si algo no funciona o tengo un problema?</button>
-            <div class="accordion-answer">
-              <p>Si tenés algún bardo técnico, en el pie de página de la web vas a encontrar un link a "Soporte
-                Técnico". Mandanos un mensaje por ahí y te damos una mano lo más rápido posible.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="cta-final">
-      <div class="container">
-        <h2>¿Listo para copar el CENS 52 con otra onda?</h2>
-        <p>Sumate a la movida digital de la escuela. Agilizá la comunicación, aprovechá mejor tu tiempo y sé parte de
-          una comunidad mucho más conectada.</p>
-        <a href="http://www.escuelaviva.ar" target="_blank" rel="noopener noreferrer" class="btn">¡Quiero entrar!</a>
-      </div>
-    </section>
+    <div class="content-wrapper">
+      <h1>Próximamente...</h1>
+      <p class="inspirational-quote">
+        Estamos construyendo el puente hacia una nueva forma de aprender. Prepárate para cruzarlo.
+      </p>
+    </div>
   </main>
 
   <footer>
     <div class="container">
-      <div class="footer-grid">
-        <div class="footer-col">
-          <img src="images/logo-horizontal-blanco.webp" alt="Logo Escuelaviva blanco" class="footer-logo" width="188"
-            height="75" loading="lazy" decoding="async">
-          <p>&copy; 2025 CENS 52 & Escuelaviva. Todos los derechos reservados.</p>
-          <p>Una iniciativa para la modernización de nuestra comunidad educativa.</p>
-        </div>
-        <div class="footer-col">
-          <h3>Navegación</h3>
-          <ul>
-            <li><a href="#">Inicio</a></li>
-            <li><a href="#benefits">Beneficios</a></li>
-            <li><a href="#faq">Preguntas Frecuentes</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h3>Contacto</h3>
-          <ul>
-            <li>
-              <p>Dirección: Av. La Plata 623, C1235 Cdad. Autónoma de Buenos Aires</p>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <img src="images/logo-horizontal-blanco.webp" alt="Logo Escuelaviva blanco" class="footer-logo" width="188"
+        height="75">
+      <p>&copy; 2025 CENS 52 & Escuelaviva. Todos los derechos reservados.</p>
+      <p>Una iniciativa para la modernización de nuestra comunidad educativa.</p>
     </div>
   </footer>
-
-  <script src="js/faq.js" defer></script>
-
 </body>
 </html>

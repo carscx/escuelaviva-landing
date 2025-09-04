@@ -1,26 +1,37 @@
-name: Deploy Static Site (Final Version)
+name: Deploy Static Site (Direct TAR over SSH)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # 1. Descargar el código de tu repositorio en el entorno de GitHub
+      # 1. Descargar el código
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Desplegar al servidor usando los parámetros 'source' y 'target'
-      #    Esta es la forma correcta de transferir archivos
-      - name: 🚀 Deploy files to server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./" # Directorio de origen (todo el repositorio) en el runner de GitHub
-          target: ${{ secrets.REMOTE_PATH }} # Directorio de destino en tu servidor
-          rm: true # Opción para borrar archivos en el destino que no están en el origen
+      # 2. Configurar la clave SSH para poder usar el comando 'ssh' directamente
+      - name: ⚙️ Setup SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      # 3. Comprimir, enviar y descomprimir en un solo paso
+      - name: 🚀 Deploy via TAR over SSH
+        run: |
+          echo "Comprimiendo y enviando archivos al servidor..."
+          # Este comando hace 3 cosas a la vez:
+          # 1. tar -cz: Comprime todo el contenido del directorio actual (.)
+          # 2. | (pipe): Envía esa compresión directamente al comando ssh
+          # 3. ssh ... "cd ... && tar -xz": Se conecta al servidor, va a la carpeta de destino y descomprime los archivos
+          tar -cz --exclude=".git" --exclude=".github" . | ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_PATH }} && tar -xz"
+
+      # 4. Verificación final en el servidor
+      - name: ✅ Verify Deployment
+        run: |
+          echo "Verificando el contenido del directorio remoto después del despliegue:"
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "ls -laR ${{ secrets.REMOTE_PATH }}"

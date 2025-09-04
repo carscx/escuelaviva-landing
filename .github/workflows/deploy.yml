@@ -1,18 +1,55 @@
-name: Deploy Static Site (Direct TAR over SSH)
+name: Deploy and Optimize Static Site
 
 on:
   push:
     branches: [main]
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       # 1. Descargar el código
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Configurar la clave SSH para poder usar el comando 'ssh' directamente
+      # 2. Configurar Node.js para usar las herramientas de optimización
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # 3. Instalar herramientas y optimizar archivos
+      - name: ⚡ Install Tools & Optimize Files
+        run: |
+          echo "Installing optimization tools (terser, clean-css, html-minifier)..."
+          npm install terser clean-css-cli html-minifier-terser -g
+
+          echo "Creating temporary 'dist' directory..."
+          mkdir -p dist
+
+          echo "Copying asset files (images, fonts, etc.)..."
+          # Copia todo lo que NO sea html, css, o js. Mantiene la estructura de carpetas.
+          rsync -av . ./dist/ --exclude='*.html' --exclude='*.css' --exclude='*.js' --exclude='node_modules' --exclude='.git*' --exclude='.github' --exclude='dist'
+
+          echo "Minifying HTML files..."
+          # Busca todos los archivos .html, los minifica y los guarda en 'dist' manteniendo su ruta
+          find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true -o dist/{} \;
+
+          echo "Minifying CSS files..."
+          # Busca todos los archivos .css, los minifica y los guarda en 'dist' manteniendo su ruta
+          find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" -exec sh -c 'cleancss -o "dist/$0" "$0"' {} \;
+
+          echo "Minifying JavaScript files..."
+          # Busca todos los archivos .js, los minifica y los guarda en 'dist' manteniendo su ruta
+          find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" -exec sh -c 'terser "$0" -o "dist/$0" -c -m' {} \;
+
+      # 4. (Opcional) Verificar el contenido de la carpeta optimizada
+      - name: 🧪 Verify optimized 'dist' folder
+        run: |
+          echo "Listing contents of optimized 'dist' folder:"
+          ls -laR dist
+
+      # 5. Configurar la clave SSH
       - name: ⚙️ Setup SSH
         run: |
           mkdir -p ~/.ssh/
@@ -20,18 +57,15 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      # 3. Comprimir, enviar y descomprimir en un solo paso
-      - name: 🚀 Deploy via TAR over SSH
+      # 6. Desplegar ÚNICAMENTE la carpeta 'dist'
+      - name: 🚀 Deploy 'dist' folder via TAR over SSH
         run: |
-          echo "Comprimiendo y enviando archivos al servidor..."
-          # Este comando hace 3 cosas a la vez:
-          # 1. tar -cz: Comprime todo el contenido del directorio actual (.)
-          # 2. | (pipe): Envía esa compresión directamente al comando ssh
-          # 3. ssh ... "cd ... && tar -xz": Se conecta al servidor, va a la carpeta de destino y descomprime los archivos
-          tar -cz --exclude=".git" --exclude=".github" . | ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_PATH }} && tar -xz"
+          echo "Deploying 'dist' folder to server..."
+          # Entramos en la carpeta 'dist' y desde ahí comprimimos y enviamos su contenido
+          cd dist && tar -cz . | ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_PATH }} && tar -xz"
 
-      # 4. Verificación final en el servidor
-      - name: ✅ Verify Deployment
+      # 7. Verificación final en el servidor
+      - name: ✅ Verify Final Deployment
         run: |
-          echo "Verificando el contenido del directorio remoto después del despliegue:"
+          echo "Verifying contents of remote directory:"
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "ls -laR ${{ secrets.REMOTE_PATH }}"

@@ -1,4 +1,4 @@
-name: Deploy Landing Page to CloudPanel
+name: Deploy Simple Static Site (Direct Copy)
 
 on:
   push:
@@ -6,42 +6,32 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Clonar el repositorio
+      # 1. Descargar el código de tu repositorio
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Instalar Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "18"
-
-      # 3. Instalar herramientas de minificación
-      - name: Install minification tools
-        run: npm install html-minifier-terser -g && npm install clean-css-cli -g
-
-      # 4. Construir y Minificar (Versión Mejorada)
-      #    - Copia todo el proyecto a 'dist'
-      #    - Luego minifica los archivos HTML y CSS directamente dentro de 'dist'
-      - name: Build and Minify
+      # 2. (Depuración) Listar los archivos que se van a copiar
+      - name: 🧪 List repository files
         run: |
-          mkdir -p dist/
-          rsync -av . ./dist/ --exclude ".git" --exclude ".github" --exclude "dist"
-          find ./dist -type f -name "*.html" -exec html-minifier-terser {} --collapse-whitespace --remove-comments -o {} \;
-          find ./dist -type f -name "*.css" -exec cleancss {} -o {} \;
+          echo "Files in the repository to be deployed:"
+          ls -laR
 
-      # 5. Desplegar los archivos al servidor (Versión Mejorada)
-      #    Usa los parámetros 'source' y 'target' de la acción, que son más seguros
-      - name: Deploy to server
+      # 3. Desplegar los archivos al servidor
+      - name: 🚀 Deploy files to server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          source: "dist/" # Directorio de origen
-          target: ${{ secrets.REMOTE_PATH }} # Directorio de destino
+          script: |
+            # Sincroniza el contenido del directorio actual (./) con el directorio remoto
+            # --exclude '.git*' es VITAL para no copiar todo el historial de git
+            # --exclude '.github' es para no copiar los workflows
+            rsync -avz --delete --exclude '.git*' --exclude '.github' ./ ${{ secrets.REMOTE_PATH }}
+
+            echo "--- Deployment finished ---"
+            echo "Final check: Listing contents of remote directory:"
+            ls -laR ${{ secrets.REMOTE_PATH }}

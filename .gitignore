@@ -1,0 +1,16 @@
+.vscode
+.qodo
+node_modules
+.DS_Store
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.old
+*.orig
+*.rej
+*.class
+
+# Environment files
+.env

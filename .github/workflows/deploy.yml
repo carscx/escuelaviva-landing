@@ -62,7 +62,7 @@ jobs:
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+          ssh -i ~/.ssh/id_ed25519 -o PasswordAuthentication=no -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'echo OK && whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo DOCROOT-OK'
 

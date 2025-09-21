@@ -9,15 +9,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 🛰️ Sincronizar código con órbita principal
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🔧 Armar laboratorio Node (v18)
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Install tools and optimize files
+      - name: ⚗️ Alquimia de assets (minificar HTML/CSS/JS)
         shell: bash
         run: |
           set -euo pipefail
@@ -48,13 +48,13 @@ jobs:
           find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" \
             -exec sh -c 'terser "$1" -o "dist/$1" -c -m' _ {} \;
 
-      - name: List dist
+      - name: 📂 Escanear artefactos (dist/)
         shell: bash
         run: |
           set -euo pipefail
           ls -laR dist
 
-      - name: Setup SSH and validate key
+      - name: 🔐 Forja de llaves SSH y juramento de confianza
         shell: bash
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -88,7 +88,7 @@ jobs:
             -i ~/.ssh/id_ed25519 \
             "$SSH_USER@$SSH_HOST" 'echo OK && whoami'
 
-      - name: Deploy dist to remote
+      - name: 🚀 Teletransportar dist/ al servidor (tar+ssh)
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -106,7 +106,7 @@ jobs:
             "$SSH_USER@$SSH_HOST" \
             "tar -xz -C \"$REMOTE_PATH\""
 
-      - name: Fix remote permissions
+      - name: 🧰 Enderezar permisos (755/644)
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -124,7 +124,7 @@ jobs:
             'find '"\"$REMOTE_PATH\""'' -type d -exec chmod 755 {} \; && \
              find '"\"$REMOTE_PATH\""'' -type f -exec chmod 644 {} \;'
 
-      - name: Verify remote tree
+      - name: 🔎 Ojo de halcón: verificación remota final
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}

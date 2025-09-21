@@ -62,15 +62,19 @@ jobs:
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_ed25519 -o PasswordAuthentication=no -o StrictHostKeyChecking=yes \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'echo OK && whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo DOCROOT-OK'
+          chmod 644 ~/.ssh/known_hosts
 
-      - name: 🚀 Deploy
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            'set -e; echo OK; whoami; ls -ld /home/escuelaviva/htdocs/escuelaviva.ar; echo DOCROOT-OK'
+
+      - name: 🚀 Deploy Files & Fix Permissions
         run: |
-          cd dist && tar -cz . | ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          cd dist && tar -cz . | ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'find /home/escuelaviva/htdocs/escuelaviva.ar -type d -exec chmod 755 {} \; && find /home/escuelaviva/htdocs/escuelaviva.ar -type f -exec chmod 644 {} \;'
 
       # 7. Verificación final en el servidor

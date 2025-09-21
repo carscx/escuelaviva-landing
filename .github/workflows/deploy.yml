@@ -10,14 +10,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: ⚡ Install Tools & Optimize Files
+      - name: Install tools and optimize files
         shell: bash
         run: |
           set -euo pipefail
@@ -26,100 +26,117 @@ jobs:
           rm -rf dist
           mkdir -p dist
 
-          # Copia assets no-HTML/CSS/JS (mantiene estructura)
-          rsync -av . dist/ \
-            --exclude='*.html' --exclude='*.css' --exclude='*.js' \
-            --exclude='node_modules' --exclude='.git*' \
-            --exclude='.github' --exclude='dist'
+          # Copia todo menos html/css/js y carpetas de trabajo
+          rsync -a . dist/ \
+            --exclude='*.html' \
+            --exclude='*.css' \
+            --exclude='*.js' \
+            --exclude='node_modules' \
+            --exclude='.git*' \
+            --exclude='.github' \
+            --exclude='dist'
 
-          # Minificar HTML (crea dirs destino)
+          # Minificar HTML
           find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec sh -c '
-              target="${1#./}"
-              mkdir -p "dist/$(dirname "$target")"
-              html-minifier-terser "$1" --collapse-whitespace --remove-comments --minify-css true --minify-js true -o "dist/$target"
-            ' _ {} \;
+            -exec sh -c 'html-minifier-terser "$1" --collapse-whitespace --remove-comments --minify-css true --minify-js true -o "dist/$1"' _ {} \;
 
           # Minificar CSS
           find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec sh -c '
-              target="${1#./}"
-              mkdir -p "dist/$(dirname "$target")"
-              cleancss -o "dist/$target" "$1"
-            ' _ {} \;
+            -exec sh -c 'cleancss -o "dist/$1" "$1"' _ {} \;
 
           # Minificar JS
           find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec sh -c '
-              target="${1#./}"
-              mkdir -p "dist/$(dirname "$target")"
-              terser "$1" -o "dist/$target" -c -m
-            ' _ {} \;
+            -exec sh -c 'terser "$1" -o "dist/$1" -c -m' _ {} \;
 
-      - name: 🧪 Verify optimized 'dist' folder
-        run: ls -laR dist
-
-      - name: 🔐 Setup SSH + validate key
+      - name: List dist
         shell: bash
+        run: |
+          set -euo pipefail
+          ls -laR dist
+
+      - name: Setup SSH and validate key
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           set -euo pipefail
           umask 077
           mkdir -p ~/.ssh
 
-          # Escribir la privada EXACTA del secret (multilínea) y normalizar CRLF
-          cat > ~/.ssh/id_ed25519 <<'KEY'
-${{ secrets.SSH_PRIVATE_KEY }}
-KEY
-          tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
-          mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
+          # Escribir la privada EXACTA del secret (multilínea) sin heredoc
+          printf '%s' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          # Validación: deriva la pública. Si falla, la privada del secret está mal.
+          # Validar que la privada es correcta (deriva la pública o falla)
           ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
-          echo -n "Fingerprint derivada: "
+          echo -n "Fingerprint: "
           ssh-keygen -lf /tmp/derived.pub
 
-          # Agrega host key del server (dominio e IP); -H guarda hashed
-          ssh-keyscan -T 5 -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts || true
+          # Confiar en la host key del servidor (dominio e IP)
+          ssh-keyscan -T 5 -H "$SSH_HOST" >> ~/.ssh/known_hosts
           ssh-keyscan -T 5 -H 46.62.216.37 >> ~/.ssh/known_hosts || true
           chmod 644 ~/.ssh/known_hosts
 
-          # Sanity: conexión sin password
-          ssh -o IdentitiesOnly=yes -o PasswordAuthentication=no \
-              -o BatchMode=yes -o ConnectionAttempts=3 \
-              -i ~/.ssh/id_ed25519 \
-              "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "echo OK && whoami"
+          # Sanity: conexión sin password usando solo esa identidad
+          ssh -T \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o BatchMode=yes \
+            -o ConnectionAttempts=3 \
+            -i ~/.ssh/id_ed25519 \
+            "$SSH_USER@$SSH_HOST" 'echo OK && whoami'
 
-      - name: 🚀 Deploy Files
+      - name: Deploy dist to remote
         shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
         run: |
           set -euo pipefail
           cd dist
           tar -cz . | ssh -T \
-            -o IdentitiesOnly=yes -o PasswordAuthentication=no \
-            -o BatchMode=yes -o ConnectionAttempts=3 \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o BatchMode=yes \
+            -o ConnectionAttempts=3 \
             -i ~/.ssh/id_ed25519 \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "tar -xz -C '${{ secrets.REMOTE_PATH }}'"
+            "$SSH_USER@$SSH_HOST" \
+            "tar -xz -C \"$REMOTE_PATH\""
 
-      - name: 🔧 Fix permissions on server
+      - name: Fix remote permissions
         shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
         run: |
           set -euo pipefail
           ssh -T \
-            -o IdentitiesOnly=yes -o PasswordAuthentication=no \
-            -o BatchMode=yes -o ConnectionAttempts=3 \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o BatchMode=yes \
+            -o ConnectionAttempts=3 \
             -i ~/.ssh/id_ed25519 \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "find '${{ secrets.REMOTE_PATH }}' -type d -exec chmod 755 {} \; && find '${{ secrets.REMOTE_PATH }}' -type f -exec chmod 644 {} \;"
+            "$SSH_USER@$SSH_HOST" \
+            'find '"\"$REMOTE_PATH\""'' -type d -exec chmod 755 {} \; && \
+             find '"\"$REMOTE_PATH\""'' -type f -exec chmod 644 {} \;'
 
-      - name: ✅ Verify Final Deployment
+      - name: Verify remote tree
         shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          REMOTE_PATH: ${{ secrets.REMOTE_PATH }}
         run: |
           set -euo pipefail
           ssh -T \
-            -o IdentitiesOnly=yes -o PasswordAuthentication=no \
-            -o BatchMode=yes -o ConnectionAttempts=3 \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o BatchMode=yes \
+            -o ConnectionAttempts=3 \
             -i ~/.ssh/id_ed25519 \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "echo 'Remote tree:' && ls -laR '${{ secrets.REMOTE_PATH }}'"
+            "$SSH_USER@$SSH_HOST" \
+            'ls -laR '"\"$REMOTE_PATH\""'

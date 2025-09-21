@@ -7,57 +7,47 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      # 1. Descargar el código
-      - name: Checkout repository
-        uses: actions/checkout@v3
 
-      # 2. Configurar Node.js para usar las herramientas de optimización
+    steps:
+      # 1) Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Node para minificar
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      # 3. Instalar herramientas y optimizar archivos
+      # 3) Optimización (HTML/CSS/JS) → dist/
       - name: ⚡ Install Tools & Optimize Files
         run: |
-          echo "Installing optimization tools (terser, clean-css, html-minifier)..."
-          npm install terser clean-css-cli html-minifier-terser -g
-
-          echo "Creating temporary 'dist' directory..."
+          npm install -g terser clean-css-cli html-minifier-terser
           mkdir -p dist
+          # Copia todo excepto html/css/js y lo ignorable
+          rsync -av . dist/ \
+            --exclude='*.html' --exclude='*.css' --exclude='*.js' \
+            --exclude='node_modules' --exclude='.git*' --exclude='.github' --exclude='dist'
+          # HTML
+          find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" \
+            -exec html-minifier-terser {} \
+              --collapse-whitespace --remove-comments --minify-css true --minify-js true \
+              -o dist/{} \;
+          # CSS
+          find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" \
+            -exec sh -c 'cleancss -o "dist/$0" "$0"' {} \;
+          # JS
+          find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" \
+            -exec sh -c 'terser "$0" -o "dist/$0" -c -m' {} \;
 
-          echo "Copying asset files (images, fonts, etc.)..."
-          # Copia todo lo que NO sea html, css, o js. Mantiene la estructura de carpetas.
-          rsync -av . ./dist/ --exclude='*.html' --exclude='*.css' --exclude='*.js' --exclude='node_modules' --exclude='.git*' --exclude='.github' --exclude='dist'
-
-          echo "Minifying HTML files..."
-          # Busca todos los archivos .html, los minifica y los guarda en 'dist' manteniendo su ruta
-          find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true -o dist/{} \;
-
-          echo "Minifying CSS files..."
-          # Busca todos los archivos .css, los minifica y los guarda en 'dist' manteniendo su ruta
-          find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" -exec sh -c 'cleancss -o "dist/$0" "$0"' {} \;
-
-          echo "Minifying JavaScript files..."
-          # Busca todos los archivos .js, los minifica y los guarda en 'dist' manteniendo su ruta
-          find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" -exec sh -c 'terser "$0" -o "dist/$0" -c -m' {} \;
-
-      # 4. (Opcional) Verificar el contenido de la carpeta optimizada
+      # 4) Listado de verificación
       - name: 🧪 Verify optimized 'dist' folder
-        run: |
-          echo "Listing contents of optimized 'dist' folder:"
-          ls -laR dist
+        run: ls -laR dist
 
-      # 5. Configurar la clave SSH
-      - name: ⚙️ Setup SSH
-        run: |
-          mkdir -p ~/.ssh/
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+      # 5) SSH sanity — usa SOLO id_ed25519 y ruta literal
       - name: 🔐 SSH sanity
         run: |
+          set -e
           mkdir -p ~/.ssh
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
@@ -68,17 +58,14 @@ jobs:
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'set -e; echo OK; whoami; ls -ld /home/escuelaviva/htdocs/escuelaviva.ar; echo DOCROOT-OK'
 
+      # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions
         run: |
-          cd dist && tar -cz . | ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+          set -e
+          cd dist
+          tar -cz . | ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'find /home/escuelaviva/htdocs/escuelaviva.ar -type d -exec chmod 755 {} \; && find /home/escuelaviva/htdocs/escuelaviva.ar -type f -exec chmod 644 {} \;'
-
-      # 7. Verificación final en el servidor
-      - name: ✅ Verify Final Deployment
-        run: |
-          echo "Verifying contents of remote directory:"
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "ls -laR ${{ secrets.REMOTE_PATH }}"

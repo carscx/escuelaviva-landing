@@ -47,20 +47,14 @@ jobs:
       # 5) Preparar clave SSH (sin base64), saneando CRLF, y probar
       - name: 🔐 SSH sanity
         run: |
-          set -e
           mkdir -p ~/.ssh
-          # Escribe la privada del secret, eliminando CRLF (\r) por si el navegador los metió
-          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          # Valida que la clave es legible por OpenSSH (si falla, la clave del secret está corrupta)
-          ssh-keygen -yf ~/.ssh/id_ed25519 >/dev/null
-
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'set -e; echo OK; whoami; ls -ld /home/escuelaviva/htdocs/escuelaviva.ar; echo DOCROOT-OK'
+            'whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo OK'
 
       # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions

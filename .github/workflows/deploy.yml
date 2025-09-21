@@ -69,6 +69,15 @@ jobs:
               # 4) Mostrar fingerprint derivada (no revela la clave)
               echo -n "Fingerprint derivada: "
               ssh-keygen -lf /tmp/derived.pub
+      - name: 🗝️ Trust server host key
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          # agrega la clave del host (dominio que usás en SSH_HOST)
+          ssh-keyscan -T 5 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          # y por las dudas, también la IP directa del server
+          ssh-keyscan -T 5 -H 46.62.216.37 >> ~/.ssh/known_hosts || true
+          chmod 644 ~/.ssh/known_hosts
 
       # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions

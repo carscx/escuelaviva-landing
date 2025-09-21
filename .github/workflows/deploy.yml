@@ -45,17 +45,23 @@ jobs:
         run: ls -laR dist
 
       # 5) Preparar clave SSH (sin base64), saneando CRLF, y probar
-      - name: 🔐 SSH sanity
+      - name: 🔐 Setup SSH + sanity
         run: |
+          set -e
           mkdir -p ~/.ssh
+          # Escribe la privada tal cual viene del secret
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o PasswordAuthentication=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo OK'
+          # Quita retornos de carro por si la UI de GitHub metió CRLF
+          tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean && mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
+          # Verifica que la clave es válida (esto falla si el secret no es una privada válida)
+          ssh-keygen -yf ~/.ssh/id_ed25519 > /dev/null
 
+          # known_hosts y prueba de conexión (sin password y usando solo esa identidad)
+          ssh-keyscan -T 5 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh -o IdentitiesOnly=yes -o PasswordAuthentication=no -i ~/.ssh/id_ed25519 \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo OK && whoami'
       # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions
         run: |

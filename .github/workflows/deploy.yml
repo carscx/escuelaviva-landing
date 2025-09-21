@@ -63,9 +63,11 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+
+          # Usa la ruta REAL (sin secrets) y muestra diagnóstico
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "echo OK && whoami && test -d '${{ secrets.REMOTE_PATH }}' && echo DOCROOT-OK"
+            'set -e; echo OK; whoami; ls -ld /home/escuelaviva/htdocs/escuelaviva.ar; echo DOCROOT-OK'
       # 6. Desplegar ÚNICAMENTE la carpeta 'dist'
       # 6. Desplegar y Corregir Permisos
       - name: 🚀 Deploy Files & Fix Permissions

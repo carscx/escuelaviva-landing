@@ -46,22 +46,22 @@ jobs:
 
       # 5) Preparar clave SSH (sin base64), saneando CRLF, y probar
       - name: 🔐 Setup SSH + sanity
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
+          umask 077                      # todo lo que se cree sale 600/700 por defecto
           mkdir -p ~/.ssh
-          # Escribe la privada tal cual viene del secret
-          printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          # Quita retornos de carro por si la UI de GitHub metió CRLF
-          tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean && mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
-          # Verifica que la clave es válida (esto falla si el secret no es una privada válida)
-          ssh-keygen -yf ~/.ssh/id_ed25519 > /dev/null
+          # escribir la privada (tal cual el secret) y normalizar CRLF
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519    # por si acaso
+          ssh-keygen -yf ~/.ssh/id_ed25519 > /dev/null  # valida formato de clave
 
-          # known_hosts y prueba de conexión (sin password y usando solo esa identidad)
+          # known_hosts y prueba
           ssh-keyscan -T 5 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
           ssh -o IdentitiesOnly=yes -o PasswordAuthentication=no -i ~/.ssh/id_ed25519 \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo OK && whoami'
+
       # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions
         run: |

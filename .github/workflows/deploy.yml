@@ -9,84 +9,104 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
-      - name: Checkout repository
+      # 1) Código
+      - name: 🛰️ Sincronizar código con órbita principal
         uses: actions/checkout@v4
 
-      # 2) Node para minificar
-      - name: Setup Node.js
+      # 2) Tooling
+      - name: 🔧 Armar laboratorio Node (v18)
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      # 3) Optimización (HTML/CSS/JS) → dist/
-      - name: ⚡ Install Tools & Optimize Files
+      # 3) Build estático
+      - name: ⚗️ Alquimia de assets (minificar HTML/CSS/JS)
+        shell: bash
         run: |
+          set -euo pipefail
           npm install -g terser clean-css-cli html-minifier-terser
+
+          rm -rf dist
           mkdir -p dist
-          # Copia todo excepto html/css/js y lo ignorable
-          rsync -av . dist/ \
-            --exclude='*.html' --exclude='*.css' --exclude='*.js' \
-            --exclude='node_modules' --exclude='.git*' --exclude='.github' --exclude='dist'
-          # HTML
+
+          # Copia todo menos html/css/js y carpetas de trabajo
+          rsync -a . dist/ \
+            --exclude='*.html' \
+            --exclude='*.css' \
+            --exclude='*.js' \
+            --exclude='node_modules' \
+            --exclude='.git*' \
+            --exclude='.github' \
+            --exclude='dist'
+
+          # Minificar HTML
           find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec html-minifier-terser {} \
-              --collapse-whitespace --remove-comments --minify-css true --minify-js true \
-              -o dist/{} \;
-          # CSS
+            -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true -o dist/{} \;
+
+          # Minificar CSS
           find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" \
             -exec sh -c 'cleancss -o "dist/$0" "$0"' {} \;
-          # JS
+
+          # Minificar JS
           find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" \
             -exec sh -c 'terser "$0" -o "dist/$0" -c -m' {} \;
 
-      # 4) Listado de verificación
-      - name: 🧪 Verify optimized 'dist' folder
-        run: ls -laR dist
+      # 4) Verificación local de build
+      - name: 📂 Escanear artefactos (dist/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -laR dist
 
-      # 5) Preparar clave SSH (sin base64), saneando CRLF, y probar
-      - name: 🔐 Validar clave privada (sin conectar)
+      # 5) Clave SSH (sin base64), exactamente como te funciona
+      - name: 🔐 Forja de llaves (sin base64, heredoc intacto)
         shell: bash
         run: |
           set -euo pipefail
           umask 077
           mkdir -p ~/.ssh
 
-          # 1) Escribir EXACTAMENTE lo que hay en el secret (multilínea)
+          # Escribir EXACTAMENTE lo que hay en el secret (multilínea)
           cat > ~/.ssh/id_ed25519 <<'KEY'
           ${{ secrets.SSH_PRIVATE_KEY }}
           KEY
 
-              # 2) Normalizar finales de línea y fijar permisos
-              tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
-              mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
-              chmod 600 ~/.ssh/id_ed25519
+          # Normalizar CRLF por si acaso y fijar permisos
+          tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
+          mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
-              # 3) Validar formato: si esto falla, el secret NO es una privada válida
-              echo "Derivando pública con ssh-keygen..."
-              ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
+          # Validar formato derivando la pública (si falla, el secret está mal)
+          echo "Derivando pública con ssh-keygen..."
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
+          echo -n "Fingerprint derivada: "
+          ssh-keygen -lf /tmp/derived.pub
 
-              # 4) Mostrar fingerprint derivada (no revela la clave)
-              echo -n "Fingerprint derivada: "
-              ssh-keygen -lf /tmp/derived.pub
-      - name: 🗝️ Trust server host key
+      # 6) Confianza en el host remoto
+      - name: 🗝️ Jurar lealtad a la host key
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p ~/.ssh
-          # agrega la clave del host (dominio que usás en SSH_HOST)
           ssh-keyscan -T 5 -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          # y por las dudas, también la IP directa del server
           ssh-keyscan -T 5 -H 46.62.216.37 >> ~/.ssh/known_hosts || true
           chmod 644 ~/.ssh/known_hosts
 
-      # 6) Deploy de dist/ al docroot y permisos
-      - name: 🚀 Deploy Files & Fix Permissions
+      # 7) Deploy y permisos en server
+      - name: 🚀 Teletransportar dist/ al servidor (tar+ssh)
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           cd dist
-          tar -cz . | ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+          tar -cz . | ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
+
+      - name: 🧰 Enderezar permisos (755/644)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'find /home/escuelaviva/htdocs/escuelaviva.ar -type d -exec chmod 755 {} \; && find /home/escuelaviva/htdocs/escuelaviva.ar -type f -exec chmod 644 {} \;'
+            'find /home/escuelaviva/htdocs/escuelaviva.ar -type d -exec chmod 755 {} \; && \
+             find /home/escuelaviva/htdocs/escuelaviva.ar -type f -exec chmod 644 {} \;'

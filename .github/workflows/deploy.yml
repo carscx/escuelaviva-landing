@@ -56,7 +56,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      - name: 🔐 SSH sanity check
+      - name: 🔐 SSH debug (-vvv)
         run: |
           mkdir -p ~/.ssh
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
@@ -64,9 +64,13 @@ jobs:
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+          echo "== Fingerprint de la clave del secret =="
+          ssh-keygen -yf ~/.ssh/id_ed25519 | ssh-keygen -lf - || true
+
+          echo "== Intento SSH con -vvv =="
+          ssh -vvv -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'set -e; echo OK; whoami; ls -ld /home/escuelaviva/htdocs/escuelaviva.ar || (echo "NO DOCROOT"; exit 1); echo DOCROOT-OK'
+            'echo OK && whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo DOCROOT-OK'
       # 6. Desplegar ÚNICAMENTE la carpeta 'dist'
       # 6. Desplegar y Corregir Permisos
       - name: 🚀 Deploy Files & Fix Permissions

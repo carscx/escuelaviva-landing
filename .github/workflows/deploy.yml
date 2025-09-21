@@ -57,7 +57,6 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       - name: 🔐 SSH sanity
-        debug: true
         run: |
           mkdir -p ~/.ssh
           printf "%s" "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
@@ -68,7 +67,6 @@ jobs:
             'echo OK && whoami && ls -ld /home/escuelaviva/htdocs/escuelaviva.ar && echo DOCROOT-OK'
 
       - name: 🚀 Deploy
-        debug: true
         run: |
           cd dist && tar -cz . | ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             'tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'

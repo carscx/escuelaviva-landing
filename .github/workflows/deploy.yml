@@ -45,22 +45,30 @@ jobs:
         run: ls -laR dist
 
       # 5) Preparar clave SSH (sin base64), saneando CRLF, y probar
-      - name: 🔐 Setup SSH + sanity
+      - name: 🔐 Validar clave privada (sin conectar)
         shell: bash
         run: |
           set -euo pipefail
-          umask 077                      # todo lo que se cree sale 600/700 por defecto
+          umask 077
           mkdir -p ~/.ssh
-          # escribir la privada (tal cual el secret) y normalizar CRLF
-          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519    # por si acaso
-          ssh-keygen -yf ~/.ssh/id_ed25519 > /dev/null  # valida formato de clave
 
-          # known_hosts y prueba
-          ssh-keyscan -T 5 ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          ssh -o IdentitiesOnly=yes -o PasswordAuthentication=no -i ~/.ssh/id_ed25519 \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo OK && whoami'
+          # 1) Escribir EXACTAMENTE lo que hay en el secret (multilínea)
+          cat > ~/.ssh/id_ed25519 <<'KEY'
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          KEY
+
+              # 2) Normalizar finales de línea y fijar permisos
+              tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
+              mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
+              chmod 600 ~/.ssh/id_ed25519
+
+              # 3) Validar formato: si esto falla, el secret NO es una privada válida
+              echo "Derivando pública con ssh-keygen..."
+              ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
+
+              # 4) Mostrar fingerprint derivada (no revela la clave)
+              echo -n "Fingerprint derivada: "
+              ssh-keygen -lf /tmp/derived.pub
 
       # 6) Deploy de dist/ al docroot y permisos
       - name: 🚀 Deploy Files & Fix Permissions

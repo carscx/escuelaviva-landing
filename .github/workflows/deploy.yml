@@ -7,6 +7,10 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Solución 1: Forzar la codificación UTF-8 para todo el entorno de ejecución.
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
 
     steps:
       # 1) Código
@@ -40,8 +44,9 @@ jobs:
             --exclude='dist'
 
           # Minificar HTML
+          # Solución 2: Añadir --charset utf-8 al comando para preservar emojis y caracteres especiales.
           find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true -o dist/{} \;
+            -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true --charset utf-8 -o dist/{} \;
 
           # Minificar CSS
           find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" \

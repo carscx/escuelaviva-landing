@@ -7,33 +7,31 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    # Solución 1: Forzar la codificación UTF-8 para todo el entorno de ejecución.
     env:
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
 
     steps:
-      # 1) Código
       - name: 🛰️ Sincronizar código con órbita principal
         uses: actions/checkout@v4
 
-      # 2) Tooling
       - name: 🔧 Armar laboratorio Node (v18)
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      # 3) Build estático
       - name: ⚗️ Alquimia de assets (minificar HTML/CSS/JS)
         shell: bash
         run: |
           set -euo pipefail
+          set -x
+
           npm install -g terser clean-css-cli html-minifier-terser
 
           rm -rf dist
           mkdir -p dist
 
-          # Copia todo menos html/css/js y carpetas de trabajo
+          # Copia todo salvo html/css/js y carpetas de trabajo
           rsync -a . dist/ \
             --exclude='*.html' \
             --exclude='*.css' \
@@ -43,27 +41,50 @@ jobs:
             --exclude='.github' \
             --exclude='dist'
 
-          # Minificar HTML
-          # Solución 2: Añadir --charset utf-8 al comando para preservar emojis y caracteres especiales.
-          find . -type f -name "*.html" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec html-minifier-terser {} --collapse-whitespace --remove-comments --minify-css true --minify-js true --charset utf-8 -o dist/{} \;
+          # Excluir carpetas no deseadas para minificación
+          EXCLUDES='
+            -not -path "./dist/*"
+            -not -path "./.git/*"
+            -not -path "./.github/*"
+            -not -path "./node_modules/*"
+          '
 
-          # Minificar CSS
-          find . -type f -name "*.css" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec sh -c 'cleancss -o "dist/$0" "$0"' {} \;
+          # Minificar HTML (creando directorios padre)
+          while IFS= read -r -d '' f; do
+            dest="dist/$f"
+            mkdir -p "$(dirname "$dest")"
+            html-minifier-terser "$f" \
+              --collapse-whitespace \
+              --remove-comments \
+              --minify-css true \
+              --minify-js true \
+              --charset utf-8 \
+              -o "$dest"
+          done < <(eval find . -type f -name '"*.html"' $EXCLUDES -print0)
 
-          # Minificar JS
-          find . -type f -name "*.js" -not -path "./dist/*" -not -path "./.git/*" \
-            -exec sh -c 'terser "$0" -o "dist/$0" -c -m' {} \;
+          # Minificar CSS (¡¡usar $1 y crear dir!!)
+          while IFS= read -r -d '' f; do
+            dest="dist/$f"
+            mkdir -p "$(dirname "$dest")"
+            cleancss -o "$dest" "$f"
+          done < <(eval find . -type f -name '"*.css"' $EXCLUDES -print0)
 
-      # 4) Verificación local de build
+          # Minificar JS (¡¡usar $1 y crear dir!!)
+          while IFS= read -r -d '' f; do
+            dest="dist/$f"
+            mkdir -p "$(dirname "$dest")"
+            terser "$f" -o "$dest" -c -m
+          done < <(eval find . -type f -name '"*.js"' $EXCLUDES -print0)
+
       - name: 📂 Escanear artefactos (dist/)
         shell: bash
         run: |
           set -euo pipefail
-          ls -laR dist
+          set -x
+          echo "Resumen dist:"
+          find dist -type f | sed 's|^| - |' | head -n 200
+          echo "Total de archivos:" $(find dist -type f | wc -l)
 
-      # 5) Clave SSH (sin base64), exactamente como te funciona
       - name: 🔐 Forja de llaves (sin base64, heredoc intacto)
         shell: bash
         run: |
@@ -71,23 +92,19 @@ jobs:
           umask 077
           mkdir -p ~/.ssh
 
-          # Escribir EXACTAMENTE lo que hay en el secret (multilínea)
           cat > ~/.ssh/id_ed25519 <<'KEY'
           ${{ secrets.SSH_PRIVATE_KEY }}
           KEY
 
-          # Normalizar CRLF por si acaso y fijar permisos
           tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
           mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          # Validar formato derivando la pública (si falla, el secret está mal)
           echo "Derivando pública con ssh-keygen..."
           ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
           echo -n "Fingerprint derivada: "
           ssh-keygen -lf /tmp/derived.pub
 
-      # 6) Confianza en el host remoto
       - name: 🗝️ Jurar lealtad a la host key
         shell: bash
         run: |
@@ -97,15 +114,15 @@ jobs:
           ssh-keyscan -T 5 -H 46.62.216.37 >> ~/.ssh/known_hosts || true
           chmod 644 ~/.ssh/known_hosts
 
-      # 7) Deploy y permisos en server
       - name: 🚀 Teletransportar dist/ al servidor (tar+ssh)
         shell: bash
         run: |
           set -euo pipefail
+          set -x
           cd dist
           tar -cz . | ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
+            'mkdir -p /home/escuelaviva/htdocs/escuelaviva.ar && tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
 
       - name: 🧰 Enderezar permisos (755/644)
         shell: bash

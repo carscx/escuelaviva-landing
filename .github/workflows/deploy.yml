@@ -12,15 +12,15 @@ jobs:
       LC_ALL: C.UTF-8
 
     steps:
-      - name: 🛰️ Sincronizar código con órbita principal
+      - name: 🛰️ Checkout
         uses: actions/checkout@v4
 
-      - name: 🔧 Armar laboratorio Node (v18)
+      - name: 🔧 Node 18
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: ⚗️ Alquimia de assets (minificar HTML/CSS/JS)
+      - name: ⚗️ Minificar estáticos
         shell: bash
         run: |
           set -euo pipefail
@@ -31,81 +31,61 @@ jobs:
           rm -rf dist
           mkdir -p dist
 
-          # Copia todo salvo html/css/js y carpetas de trabajo
-          rsync -a . dist/ \
-            --exclude='*.html' \
-            --exclude='*.css' \
-            --exclude='*.js' \
-            --exclude='node_modules' \
-            --exclude='.git*' \
-            --exclude='.github' \
-            --exclude='dist'
+          # Copiamos tal cual lo que no se minifica (images, favicons, etc.)
+          rsync -a ./images/ ./dist/images/
 
-          # Excluir carpetas no deseadas para minificación
-          EXCLUDES='
-            -not -path "./dist/*"
-            -not -path "./.git/*"
-            -not -path "./.github/*"
-            -not -path "./node_modules/*"
-          '
+          # HTML (sin --charset)
+          for f in index.html index-escuela.html 403.html 404.html 50x.html; do
+            if [ -f "$f" ]; then
+              mkdir -p "dist/$(dirname "$f")"
+              html-minifier-terser "$f" \
+                --collapse-whitespace \
+                --remove-comments \
+                --minify-css true \
+                --minify-js true \
+                -o "dist/$f"
+            fi
+          done
 
-          # Minificar HTML (creando directorios padre)
-          while IFS= read -r -d '' f; do
-            dest="dist/$f"
-            mkdir -p "$(dirname "$dest")"
-            html-minifier-terser "$f" \
-              --collapse-whitespace \
-              --remove-comments \
-              --minify-css true \
-              --minify-js true \
-              --charset utf-8 \
-              -o "$dest"
-          done < <(eval find . -type f -name '"*.html"' $EXCLUDES -print0)
+          # CSS
+          if [ -d css ]; then
+            mkdir -p dist/css
+            # mantén nombres para no romper rutas
+            cleancss -o dist/css/styles.css css/styles.css
+          fi
 
-          # Minificar CSS (¡¡usar $1 y crear dir!!)
-          while IFS= read -r -d '' f; do
-            dest="dist/$f"
-            mkdir -p "$(dirname "$dest")"
-            cleancss -o "$dest" "$f"
-          done < <(eval find . -type f -name '"*.css"' $EXCLUDES -print0)
+          # JS (min + mangle)
+          if [ -d js ]; then
+            mkdir -p dist/js
+            for f in js/*.js; do
+              [ -f "$f" ] || continue
+              terser "$f" -o "dist/$f" -c -m
+            done
+          fi
 
-          # Minificar JS (¡¡usar $1 y crear dir!!)
-          while IFS= read -r -d '' f; do
-            dest="dist/$f"
-            mkdir -p "$(dirname "$dest")"
-            terser "$f" -o "$dest" -c -m
-          done < <(eval find . -type f -name '"*.js"' $EXCLUDES -print0)
-
-      - name: 📂 Escanear artefactos (dist/)
+      - name: 📂 Listado dist
         shell: bash
         run: |
           set -euo pipefail
-          set -x
-          echo "Resumen dist:"
-          find dist -type f | sed 's|^| - |' | head -n 200
-          echo "Total de archivos:" $(find dist -type f | wc -l)
+          find dist -type f -maxdepth 3 | sed 's|^| - |'
+          echo "Total:" $(find dist -type f | wc -l)
 
-      - name: 🔐 Forja de llaves (sin base64, heredoc intacto)
+      - name: 🔐 SSH key
         shell: bash
         run: |
           set -euo pipefail
           umask 077
           mkdir -p ~/.ssh
-
           cat > ~/.ssh/id_ed25519 <<'KEY'
           ${{ secrets.SSH_PRIVATE_KEY }}
           KEY
-
           tr -d '\r' < ~/.ssh/id_ed25519 > ~/.ssh/id_ed25519.clean
           mv ~/.ssh/id_ed25519.clean ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-
-          echo "Derivando pública con ssh-keygen..."
           ssh-keygen -y -f ~/.ssh/id_ed25519 > /tmp/derived.pub
-          echo -n "Fingerprint derivada: "
           ssh-keygen -lf /tmp/derived.pub
 
-      - name: 🗝️ Jurar lealtad a la host key
+      - name: 🗝️ Known hosts
         shell: bash
         run: |
           set -euo pipefail
@@ -114,17 +94,16 @@ jobs:
           ssh-keyscan -T 5 -H 46.62.216.37 >> ~/.ssh/known_hosts || true
           chmod 644 ~/.ssh/known_hosts
 
-      - name: 🚀 Teletransportar dist/ al servidor (tar+ssh)
+      # ✅ Usar rsync con --delete para eliminar basura vieja del server
+      - name: 🚀 Deploy con rsync (--delete)
         shell: bash
         run: |
           set -euo pipefail
-          set -x
-          cd dist
-          tar -cz . | ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o PasswordAuthentication=no \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            'mkdir -p /home/escuelaviva/htdocs/escuelaviva.ar && tar -xz -C /home/escuelaviva/htdocs/escuelaviva.ar'
+          rsync -az --delete \
+            -e 'ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o PasswordAuthentication=no' \
+            dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/escuelaviva/htdocs/escuelaviva.ar/
 
-      - name: 🧰 Enderezar permisos (755/644)
+      - name: 🧰 Permisos (755/644)
         shell: bash
         run: |
           set -euo pipefail
